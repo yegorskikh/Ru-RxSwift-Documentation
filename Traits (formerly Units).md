@@ -1,7 +1,7 @@
 Traits (formerly Units)
 =====
 
-This document will try to describe what traits are, why they are a useful concept, and how to use and create them.
+Этот документ попытается описать, что такое трейты, почему они являются полезной концепцией и как их использовать и создавать.
 
 * [General](#general)
   * [Why](#why)
@@ -24,15 +24,15 @@ This document will try to describe what traits are, why they are a useful concep
 ## General
 ### Why
 
-Swift has a powerful type system that can be used to improve the correctness and stability of applications and make using Rx a more intuitive and straightforward experience.
+Swift имеет мощную систему типов, которую можно использовать для улучшения правильности и стабильности приложений и сделать использование Rx более интуитивно понятным и простым.
 
-Traits help communicate and ensure observable sequence properties across interface boundaries, as well as provide contextual meaning, syntactical sugar and target more specific use-cases when compared to a raw Observable, which could be used in any context. **For that reason, Traits are entirely optional. You are free to use raw Observable sequences everywhere in your program as all core RxSwift/RxCocoa APIs support them.**
+Черты помогают сообщать и обеспечивать наблюдаемые свойства последовательности через границы интерфейса, а также предоставляют контекстуальное значение, синтаксический сахар и нацелены на более конкретные варианты использования по сравнению с необработанным наблюдаемым, который можно использовать в любом контексте. **По этой причине Черты совершенно необязательны. Вы можете свободно использовать необработанные последовательности Observable везде в своей программе, так как все основные API-интерфейсы RxSwift/RxCocoa поддерживают их.**
 
-_**Note:** Some of the Traits described in this document (such as `Driver`) are specific only to the [RxCocoa](https://github.com/ReactiveX/RxSwift/tree/main/RxCocoa) project, while some are part of the general [RxSwift](https://github.com/ReactiveX/RxSwift) project. However, the same principles could easily be implemented in other Rx implementations, if necessary. There is no private API magic needed._
+_**Примечание.** Некоторые трейты, описанные в этом документе (например, «Драйвер»), относятся только к проекту [RxCocoa](https://github.com/ReactiveX/RxSwift/tree/main/RxCocoa). , а некоторые являются частью общего проекта [RxSwift](https://github.com/ReactiveX/RxSwift). Однако те же самые принципы могут быть легко реализованы в других реализациях Rx, если это необходимо. Никакой частной магии API не требуется._
 
 ### How they work
 
-Traits are simply a wrapper struct with a single read-only Observable sequence property.
+Черты — это просто структура-оболочка с одним доступным только для чтения свойством последовательности Observable.
 
 ```swift
 struct Single<Element> {
@@ -45,7 +45,7 @@ struct Driver<Element> {
 ...
 ```
 
-You can think of them as a kind of builder pattern implementation for Observable sequences. When a Trait is built, calling `.asObservable()` will transform it back into a vanilla observable sequence.
+Вы можете думать о них как о своего рода реализации шаблона строителя для последовательностей Observable. Когда Trait построен, вызов `.asObservable()` преобразует его обратно в ванильную наблюдаемую последовательность.
 
 ---
 
@@ -53,16 +53,16 @@ You can think of them as a kind of builder pattern implementation for Observable
 
 ### Single
 
-A Single is a variation of Observable that, instead of emitting a series of elements, is always guaranteed to emit either _a single element_ or _an error_.
+Single — это разновидность Observable, которая вместо серии элементов всегда гарантированно выдает либо _один элемент_, либо _ошибку_.
 
-* Emits exactly one element, or an error.
-* Doesn't share side effects.
+* Выдает ровно один элемент или ошибку.
+* Не разделяет побочных эффектов.
 
-One common use case for using Single is for performing HTTP Requests that could only return a response or an error, but a Single can be used to model any case where you only care for a single element, and not for an infinite stream of elements.
+Одним из распространенных вариантов использования Single является выполнение HTTP-запросов, которые могут возвращать только ответ или ошибку, но Single можно использовать для моделирования любого случая, когда вам нужен только один элемент, а не бесконечный поток элементов.
 
-#### Creating a Single
-Creating a Single is similar to creating an Observable.
-A simple example would look like this:
+#### Создание Single
+Создание Single похоже на создание Observable.
+Простой пример будет выглядеть так:
 
 ```swift
 func getRepo(_ repo: String) -> Single<[String: Any]> {
@@ -90,7 +90,7 @@ func getRepo(_ repo: String) -> Single<[String: Any]> {
 }
 ```
 
-After which you could use it in the following way:
+После чего вы можете использовать его следующим образом:
 
 ```swift
 getRepo("ReactiveX/RxSwift")
@@ -117,23 +117,23 @@ getRepo("ReactiveX/RxSwift")
     .disposed(by: disposeBag)
 ```
 
-The subscription provides a `SingleEvent` enumeration which could be either `.success` containing a element of the Single's type, or `.error`. No further events would be emitted beyond the first one.
+Подписка предоставляет перечисление `SingleEvent`, которое может быть либо `.success`, содержащим элемент типа Single, либо `.error`. Никакие другие события не будут генерироваться за пределами первого.
 
-It's also possible using `.asSingle()` on a raw Observable sequence to transform it into a Single.
+Также возможно использовать `.asSingle()` в необработанной последовательности Observable, чтобы преобразовать ее в Single.
 
 ### Completable
 
-A Completable is a variation of Observable that can only _complete_ or _emit an error_. It is guaranteed to not emit any elements.
+Completable — это вариант Observable, который может только _complete_ или выдать error_. Гарантированно не излучает никаких элементов.
 
-* Emits zero elements.
-* Emits a completion event, or an error.
-* Doesn't share side effects.
+* Излучает ноль элементов.
+* Выдает событие завершения или ошибку.
+* Не разделяет побочных эффектов.
 
-A useful use case for Completable would be to model any case where we only care for the fact an operation has completed, but don't care about a element resulted by that completion.
-You could compare it to using an `Observable<Void>` that can't emit elements.
+Полезным вариантом использования Completable может быть моделирование любого случая, когда нам важен только факт завершения операции, но не важен элемент, полученный в результате этого завершения.
+Вы можете сравнить это с использованием `Observable<Void>`, который не может испускать элементы.
 
 #### Creating a Completable
-Creating a Completable is similar to creating an Observable. A simple example would look like this:
+Создание Completable похоже на создание Observable. Простой пример будет выглядеть так:
 
 ```swift
 func cacheLocally() -> Completable {
@@ -152,8 +152,7 @@ func cacheLocally() -> Completable {
     }
 }
 ```
-
-After which you could use it in the following way:
+После чего вы можете использовать его следующим образом:
 ```swift
 cacheLocally()
     .subscribe { completable in
@@ -167,7 +166,7 @@ cacheLocally()
     .disposed(by: disposeBag)
 ```
 
-Or by using `subscribe(onCompleted:onError:)` as follows:
+Или с помощью `subscribe(onCompleted:onError:)` следующим образом:
 ```swift
 cacheLocally()
     .subscribe(onCompleted: {
@@ -179,31 +178,31 @@ cacheLocally()
     .disposed(by: disposeBag)
 ```
 
-The subscription provides a `CompletableEvent` enumeration which could be either `.completed` - indicating the operation completed with no errors, or `.error`. No further events would be emitted beyond the first one.
+Подписка предоставляет перечисление `CompletableEvent`, которое может быть либо `.completed`, указывающим на завершение операции без ошибок, либо `.error`. Никакие другие события не будут генерироваться за пределами первого.
 
 ### Maybe
-A Maybe is a variation of Observable that is right in between a Single and a Completable. It can either emit a single element, complete without emitting an element, or emit an error.
+A Maybe — это вариант Observable, который находится между Single и Completable. Он может либо выдать один элемент, завершиться без выдачи элемента, либо выдать ошибку.
 
-**Note:** Any of these three events would terminate the Maybe, meaning - a Maybe that completed can't also emit an element, and a Maybe that emitted an element can't also send a Completion event.
+**Примечание.** Любое из этих трех событий приведет к прекращению действия «Может быть», а это означает, что завершенное «возможно» не может также выдать элемент, а «может быть», выпустившее элемент, не может также отправить событие «Завершение».
 
-* Emits either a completed event, a single element or an error.
-* Doesn't share side effects.
+* Выдает завершенное событие, отдельный элемент или ошибку.
+* Не разделяет побочных эффектов.
 
-You could use Maybe to model any operation that **could** emit an element, but doesn't necessarily **have to** emit an element.
+Вы можете использовать Maybe для моделирования любой операции, которая **может** испускать элемент, но не обязательно **должна** испускать элемент.
 
-#### Creating a Maybe
-Creating a Maybe is similar to creating an Observable. A simple example would look like this:
+#### Создание Maybe
+Создание Maybe похоже на создание Observable. Простой пример будет выглядеть так:
 
 ```swift
 func generateString() -> Maybe<String> {
     return Maybe<String>.create { maybe in
         maybe(.success("RxSwift"))
 
-        // OR
+        // ИЛИ
 
         maybe(.completed)
 
-        // OR
+        // ИЛИ
 
         maybe(.error(error))
 
@@ -212,7 +211,7 @@ func generateString() -> Maybe<String> {
 }
 ```
 
-After which you could use it in the following way:
+После чего вы можете использовать его следующим образом:
 ```swift
 generateString()
     .subscribe { maybe in
@@ -228,7 +227,7 @@ generateString()
     .disposed(by: disposeBag)
 ```
 
-Or by using `subscribe(onSuccess:onError:onCompleted:)` as follows:
+Или с помощью `subscribe(onSuccess:onError:onCompleted:)` следующим образом:
 
 ```swift
 generateString()
@@ -244,9 +243,27 @@ generateString()
     .disposed(by: disposeBag)
 ```
 
-It's also possible using `.asMaybe()` on a raw Observable sequence to transform it into a `Maybe`.
+Также возможно использовать `.asMaybe()` в необработанной последовательности Observable, чтобы преобразовать ее в `Maybe`.
 
 ---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## RxCocoa traits
 
