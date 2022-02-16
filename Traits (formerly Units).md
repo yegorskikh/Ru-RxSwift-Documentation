@@ -269,33 +269,33 @@ generateString()
 
 ### Driver
 
-This is the most elaborate trait. Its intention is to provide an intuitive way to write reactive code in the UI layer, or for any case where you want to model a stream of data _Driving_ your application.
+Это самая проработанная черта. Его цель состоит в том, чтобы предоставить интуитивно понятный способ написания реактивного кода на уровне пользовательского интерфейса или в любом случае, когда вы хотите смоделировать поток данных, управляющий вашим приложением.
 
-* Can't error out.
-* Observe occurs on main scheduler.
-* Shares side effects (`share(replay: 1, scope: .whileConnected)`).
+* Не могу ошибиться.
+* Наблюдение происходит в основном планировщике.
+* Делится побочными эффектами (`share(replay: 1, scope: .whileConnected)`).
 
-#### Why is it named Driver
+#### Почему он называется Driver
 
-Its intended use case was to model sequences that drive your application.
+Его предполагаемый вариант использования заключался в моделировании последовательностей, управляющих вашим приложением.
 
-E.g.
-* Drive UI from CoreData model.
-* Drive UI using values from other UI elements (bindings).
+Например.
+* Пользовательский интерфейс привода из модели CoreData.
+* Управляйте пользовательским интерфейсом, используя значения из других элементов пользовательского интерфейса (привязки).
 ...
 
 
-Like normal operating system drivers, in case a sequence errors out, your application will stop responding to user input.
+Как и обычные драйверы операционной системы, в случае ошибки последовательности ваше приложение перестанет реагировать на ввод данных пользователем.
 
-It is also extremely important that those elements are observed on the main thread because UI elements and application logic are usually not thread safe.
+Также чрезвычайно важно, чтобы эти элементы наблюдались в основном потоке, потому что элементы пользовательского интерфейса и логика приложения обычно не являются потокобезопасными.
 
-Also, a `Driver` builds an observable sequence that shares side effects.
+Кроме того, `Driver` создает наблюдаемую последовательность, которая имеет общие побочные эффекты.
 
-E.g.
+Например.
 
-#### Practical usage example
+#### Практический пример использования
 
-This is a typical beginner example.
+Это типичный пример новичка.
 
 ```swift
 let results = query.rx.text
@@ -316,28 +316,28 @@ results
     .disposed(by: disposeBag)
 ```
 
-The intended behavior of this code was to:
-* Throttle user input.
-* Contact server and fetch a list of user results (once per query).
-* Bind the results to two UI elements: results table view and a label that displays the number of results.
+Предполагаемое поведение этого кода заключалось в следующем:
+* Дроссельный пользовательский ввод.
+* Связаться с сервером и получить список пользовательских результатов (один раз за запрос).
+* Привяжите результаты к двум элементам пользовательского интерфейса: представлению таблицы результатов и метке, отображающей количество результатов.
 
-So, what are the problems with this code?:
-* If the `fetchAutoCompleteItems` observable sequence errors out (connection failed or parsing error), this error would unbind everything and the UI wouldn't respond any more to new queries.
-* If `fetchAutoCompleteItems` returns results on some background thread, results would be bound to UI elements from a background thread which could cause non-deterministic crashes.
-* Results are bound to two UI elements, which means that for each user query, two HTTP requests would be made, one for each UI element, which is not the intended behavior.
+Итак, какие проблемы с этим кодом?:
+* Если ошибка наблюдаемой последовательности `fetchAutoCompleteItems` (ошибка соединения или ошибка синтаксического анализа) приведет к отмене привязки, и пользовательский интерфейс больше не будет отвечать на новые запросы.
+* Если `fetchAutoCompleteItems` возвращает результаты в каком-то фоновом потоке, результаты будут привязаны к элементам пользовательского интерфейса из фонового потока, что может вызвать недетерминированные сбои.
+* Результаты привязаны к двум элементам пользовательского интерфейса, что означает, что для каждого пользовательского запроса будет выполнено два HTTP-запроса, по одному для каждого элемента пользовательского интерфейса, что не является предполагаемым поведением.
 
-A more appropriate version of the code would look like this:
+Более подходящая версия кода будет выглядеть так:
 
 ```swift
 let results = query.rx.text
     .throttle(.milliseconds(300), scheduler: MainScheduler.instance)
     .flatMapLatest { query in
         fetchAutoCompleteItems(query)
-            .observeOn(MainScheduler.instance)  // results are returned on MainScheduler
-            .catchErrorJustReturn([])           // in the worst case, errors are handled
+            .observeOn(MainScheduler.instance) // результаты возвращаются в MainScheduler
+            .catchErrorJustReturn([])           // в худшем случае обрабатываются ошибки
     }
-    .share(replay: 1)                           // HTTP requests are shared and results replayed
-                                                // to all UI elements
+    .share(replay: 1)                          // HTTP-запросы передаются, а результаты воспроизводятся
+                                                 // ко всем элементам пользовательского интерфейса
 
 results
     .map { "\($0.count)" }
@@ -351,23 +351,25 @@ results
     .disposed(by: disposeBag)
 ```
 
-Making sure all of these requirements are properly handled in large systems can be challenging, but there is a simpler way of using the compiler and traits to prove these requirements are met.
+Убедиться, что все эти требования должным образом обрабатываются в больших системах, может быть сложно, но есть более простой способ использовать компилятор и трейты, чтобы доказать, что эти требования выполнены.
 
-The following code looks almost the same:
+Следующий код выглядит почти так же:
 
 ```swift
-let results = query.rx.text.asDriver()        // This converts a normal sequence into a `Driver` sequence.
+let results = query.rx.text.asDriver()        // Это преобразует обычную последовательность в последовательность `Драйвер`  
     .throttle(.milliseconds(300), scheduler: MainScheduler.instance)
     .flatMapLatest { query in
         fetchAutoCompleteItems(query)
-            .asDriver(onErrorJustReturn: [])  // Builder just needs info about what to return in case of error.
+            .asDriver(onErrorJustReturn: [])  // Строителю просто нужна информация о том, что возвращать в случае ошибки.
     }
 
 results
     .map { "\($0.count)" }
-    .drive(resultCount.rx.text)               // If there is a `drive` method available instead of `bind(to:)`,
-    .disposed(by: disposeBag)              // that means that the compiler has proven that all properties
-                                              // are satisfied.
+    .drive(resultCount.rx.text)             // Если вместо `bind(to:)` доступен метод `drive`,
+    .disposed(by: disposeBag)              // это означает, что компилятор доказал, что все свойства  
+                                              // удовлетворены.
+
+
 results
     .drive(resultsTableView.rx.items(cellIdentifier: "Cell")) { (_, result, cell) in
         cell.textLabel?.text = "\(result)"
@@ -383,75 +385,76 @@ This first `asDriver` method converts the `ControlProperty` trait to a `Driver` 
 query.rx.text.asDriver()
 ```
 
-Notice that there wasn't anything special that needed to be done. `Driver` has all of the properties of the `ControlProperty` trait, plus some more. The underlying observable sequence is just wrapped as a `Driver` trait, and that's it.
+Обратите внимание, что не было ничего особенного, что нужно было сделать. `Driver` имеет все свойства трейта `ControlProperty`, а также некоторые другие. Базовая наблюдаемая последовательность просто обернута как черта `Driver`, и все.
 
-The second change is:
+Второе изменение:
 
 ```swift
 .asDriver(onErrorJustReturn: [])
 ```
 
-Any observable sequence can be converted to `Driver` trait, as long as it satisfies 3 properties:
-* Can't error out.
-* Observe on main scheduler.
-* Sharing side effects (`share(replay: 1, scope: .whileConnected)`).
+Любая наблюдаемая последовательность может быть преобразована в черту «Драйвер», если она удовлетворяет трем свойствам:
+* Не могу ошибиться.
+* Наблюдайте за основным планировщиком.
+* Совместное использование побочных эффектов (`share(replay: 1, scope: .whileConnected)`).
 
-So how do you make sure those properties are satisfied? Just use normal Rx operators. `asDriver(onErrorJustReturn: [])` is equivalent to following code.
+Так как же убедиться, что эти свойства удовлетворены? Просто используйте обычные операторы Rx. `asDriver(onErrorJustReturn: [])` эквивалентен следующему коду.
 
 ```swift
 let safeSequence = xs
-  .observeOn(MainScheduler.instance)        // observe events on main scheduler
-  .catchErrorJustReturn(onErrorJustReturn)  // can't error out
-  .share(replay: 1, scope: .whileConnected) // side effects sharing
+  .observeOn(MainScheduler.instance)        // наблюдаем за событиями в главном планировщике
+  .catchErrorJustReturn(onErrorJustReturn)  // не может вывести ошибку
+  .share(replay: 1, scope: .whileConnected) // обмен побочными эффектами
 
-return Driver(raw: safeSequence)            // wrap it up
+return Driver(raw: safeSequence)            // завершаем
 ```
 
-The final piece is using `drive` instead of using `bind(to:)`.
+Последняя часть использует `drive` вместо `bind(to:)`.
 
-`drive` is defined only on the `Driver` trait. This means that if you see `drive` somewhere in code, that observable sequence can never error out and it observes on the main thread, which is safe for binding to a UI element.
+`драйв` определен только в признаке `Driver`. Это означает, что если вы видите `drive` где-то в коде, эта наблюдаемая последовательность никогда не может привести к ошибке, и она наблюдает в основном потоке, что безопасно для привязки к элементу пользовательского интерфейса.
 
-Note however that, theoretically, someone could still define a `drive` method to work on `ObservableType` or some other interface, so to be extra safe, creating a temporary definition with `let results: Driver<[Results]> = ...` before binding to UI elements would be necessary for complete proof. However, we'll leave it up to the reader to decide whether this is a realistic scenario or not.
+Однако обратите внимание, что теоретически кто-то все еще может определить метод `drive` для работы с `ObservableType` или каким-либо другим интерфейсом, поэтому для дополнительной безопасности создайте временное определение с `let results: Driver<[Results]> = .. .` перед привязкой к элементам пользовательского интерфейса было бы необходимо для полного доказательства. Тем не менее, мы оставим читателю решать, является ли это реалистичным сценарием или нет.
 
 ### Signal
 
-A `Signal` is similar to `Driver` with one difference, it does **not** replay the latest event on subscription, but subscribers still share the sequence's computational resources.
+`Signal` похож на`Driver` с одним отличием: он **не** воспроизводит последнее событие по подписке, но подписчики по-прежнему разделяют вычислительные ресурсы последовательности.
 
-It can be considered a builder pattern to model Imperative Events in a Reactive way as part of your application.
+Его можно рассматривать как шаблон построителя для моделирования императивных событий реактивным способом как часть вашего приложения.
 
-A `Signal`:
+`Signal`:
 
-* Can't error out.
-* Delivers events on Main Scheduler.
-* Shares computational resources (`share(scope: .whileConnected)`).
-* Does NOT replay elements on subscription.
+* Не могу ошибиться.
+* Доставляет события на основной планировщик.
+* Разделяет вычислительные ресурсы (`share(scope: .whileConnected)`).
+* НЕ воспроизводит элементы по подписке.
+
 
 ## ControlProperty / ControlEvent
 
 ### ControlProperty
 
-Trait for `Observable`/`ObservableType` that represents a property of UI element.
+Признак для `Observable`/`ObservableType`, который представляет свойство элемента пользовательского интерфейса.
  
-Sequence of values only represents initial control value and user initiated value changes. Programmatic value changes won't be reported.
+Последовательность значений представляет собой только начальное значение управления и изменения значений, инициированные пользователем. Сообщения об изменениях программной ценности не поступают.
 
-It's properties are:
+Его свойства:
 
-- it never fails
-- `share(replay: 1)` behavior
-    - it's stateful, upon subscription (calling subscribe) last element is immediately replayed if it was produced
-- it will `Complete` sequence on control being deallocated
-- it never errors out
-- it delivers events on `MainScheduler.instance`
+- никогда не подводит
+- `share(replay: 1)` поведение
+    - это состояние, при подписке (вызов подписки) последний элемент немедленно воспроизводится, если он был создан
+- будет завершена последовательность при освобождении управления
+- никогда не выдает ошибок
+- он доставляет события в `MainScheduler.instance`
 
-The implementation of `ControlProperty` will ensure that sequence of events is being subscribed on main scheduler (`subscribeOn(ConcurrentMainScheduler.instance)` behavior).
+Реализация `ControlProperty` гарантирует, что последовательность событий подписывается в основном планировщике (поведение `subscribeOn(ConcurrentMainScheduler.instance)`).
 
-#### Practical usage example
+#### Практический пример использования
 
-We can find very good practical examples in the `UISearchBar+Rx` and in the `UISegmentedControl+Rx`:
+Мы можем найти очень хорошие практические примеры в «UISearchBar Rx» и в «UISegmentedControl Rx»:
 
 ```swift 
 extension Reactive where Base: UISearchBar {
-    /// Reactive wrapper for `text` property.
+    /// Реактивная оболочка для свойства `text`.
     public var value: ControlProperty<String?> {
         let source: Observable<String?> = Observable.deferred { [weak searchBar = self.base as UISearchBar] () -> Observable<String?> in
             let text = searchBar?.text
@@ -474,12 +477,12 @@ extension Reactive where Base: UISearchBar {
 
 ```swift
 extension Reactive where Base: UISegmentedControl {
-    /// Reactive wrapper for `selectedSegmentIndex` property.
+    /// Реактивная оболочка для свойства selectedSegmentIndex.
     public var selectedSegmentIndex: ControlProperty<Int> {
         value
     }
     
-    /// Reactive wrapper for `selectedSegmentIndex` property.
+    /// Реактивная оболочка для свойства selectedSegmentIndex.
     public var value: ControlProperty<Int> {
         return UIControl.rx.value(
             self.base,
@@ -495,26 +498,26 @@ extension Reactive where Base: UISegmentedControl {
 
 ### ControlEvent
 
-Trait for `Observable`/`ObservableType` that represents an event on a UI element.
+Признак для `Observable`/`ObservableType`, который представляет событие в элементе пользовательского интерфейса.
 
-It's properties are:
+Его свойства:
 
-- it never fails
-- it won't send any initial value on subscription
-- it will `Complete` sequence on control being deallocated
-- it never errors out
-- it delivers events on `MainScheduler.instance`
+- никогда не подводит
+- он не будет отправлять начальное значение при подписке
+- будет завершена последовательность при освобождении управления
+- никогда не выдает ошибок
+- он доставляет события в `MainScheduler.instance`
 
-The implementation of `ControlEvent` will ensure that sequence of events is being subscribed on main scheduler (`subscribeOn(ConcurrentMainScheduler.instance)` behavior).
+Реализация `ControlEvent` гарантирует, что последовательность событий подписывается в основном планировщике (поведение `subscribeOn(ConcurrentMainScheduler.instance)`).
 
-#### Practical usage example
+#### Практический пример использования
 
-This is a typical case example in which you can use it:
+Это типичный пример случая, в котором вы можете его использовать:
 
 ```swift
 public extension Reactive where Base: UIViewController {
     
-    /// Reactive wrapper for `viewDidLoad` message `UIViewController:viewDidLoad:`.
+    /// Реактивная оболочка для сообщения `viewDidLoad` `UIViewController:viewDidLoad:`.
     public var viewDidLoad: ControlEvent<Void> {
         let source = self.methodInvoked(#selector(Base.viewDidLoad)).map { _ in }
         return ControlEvent(events: source)
@@ -522,13 +525,13 @@ public extension Reactive where Base: UIViewController {
 }
 ```
 
-And in the `UICollectionView+Rx` we can found it in this way:
+И в `UICollectionView Rx` мы можем найти это так:
 
 ```swift
 
 extension Reactive where Base: UICollectionView {
     
-    /// Reactive wrapper for `delegate` message `collectionView:didSelectItemAtIndexPath:`.
+    /// Реактивная оболочка для сообщения делегата collectionView:didSelectItemAtIndexPath:.
     public var itemSelected: ControlEvent<IndexPath> {
         let source = delegate.methodInvoked(#selector(UICollectionViewDelegate.collectionView(_:didSelectItemAt:)))
             .map { a in
