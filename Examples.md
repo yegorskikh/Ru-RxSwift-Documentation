@@ -9,103 +9,106 @@ Examples
 
 ## Reactive values
 
-First, let's start with some imperative code.
-The purpose of this example is to bind the identifier `c` to a value calculated from `a` and `b` if some condition is satisfied.
+Во-первых, давайте начнем с некоторого императивного кода.
+Цель этого примера состоит в том, чтобы привязать идентификатор `c` к значению, вычисляемому из `a` и `b`, если выполняется какое-то условие.
 
-Here is the imperative code that calculates the value of `c`:
+Вот императивный код, который вычисляет значение `c`:
 
 ```swift
-// this is standard imperative code
+// это стандартный императивный код
 var c: String
-var a = 1       // this will only assign the value `1` to `a` once
-var b = 2       // this will only assign the value `2` to `b` once
+var a = 1       // это только присвоит значение «1» для `a` один раз
+var b = 2       // это только присвоит значение «2» для `b` один раз this will only assign the value `2` to `b` once
 
 if a + b >= 0 {
     c = "\(a + b) is positive" // this will only assign the value to `c` once
 }
 ```
 
-The value of `c` is now `3 is positive`. However, if we change the value of `a` to `4`, `c` will still contain the old value.
+Значение `c` теперь равно `3 положительное`. Однако, если мы изменим значение `a` на `4`, `c` все равно будет содержать старое значение.
+
 
 ```swift
-a = 4           // `c` will still be equal to "3 is positive" which is not good
-                // we want `c` to be equal to "6 is positive" since 4 + 2 = 6
+a = 4            // `c` все равно будет равно "3 положительно", что нехорошо
+                 // мы хотим, чтобы `c` было равно "6 положительно", так как 4 + 2 = 6
 ```
 
-This is not the desired behavior.
 
-This is the improved logic using RxSwift:
+Это нежелательное поведение.
+
+Это улучшенная логика с использованием RxSwift:
 
 ```swift
 let a /*: Observable<Int>*/ = BehaviorRelay(value: 1)   // a = 1
 let b /*: Observable<Int>*/ = BehaviorRelay(value: 2)   // b = 2
 
-// Combines latest values of relays `a` and `b` using `+`
+// Объединяет последние значения реле `a` и `b`, используя `+`
+
 let c = Observable.combineLatest(a, b) { $0 + $1 }
-	.filter { $0 >= 0 }               // if `a + b >= 0` is true, `a + b` is passed to the map operator
-	.map { "\($0) is positive" }      // maps `a + b` to "\(a + b) is positive"
+	.filter { $0 >= 0 }               // если `a b >= 0` истинно, `a + b` передается оператору карты                                  
+	.map { "\($0) is positive" }      // сопоставляет `a + b` с "\(a + b) is positive" 
 
-// Since the initial values are a = 1 and b = 2
-// 1 + 2 = 3 which is >= 0, so `c` is initially equal to "3 is positive"
+// Поскольку начальные значения равны a = 1 и b = 2
+// 1 + 2 = 3, что >= 0, поэтому `c` изначально равно "3 is positive" 
 
-// To pull values out of the Rx `Observable` `c`, subscribe to values from `c`.
-// `subscribe(onNext:)` means subscribe to the next (fresh) values of `c`.
-// That also includes the initial value "3 is positive".
-c.subscribe(onNext: { print($0) })          // prints: "3 is positive"
+// Чтобы получить значения из Rx `Observable` `c`, подпишитесь на значения из `c`.
+// `subscribe(onNext:)` означает подписку на next (свежие) значения `c`.
+// Это также включает в себя начальное значение "3 is positive".
+c.subscribe(onNext: { print($0) }) // печатает: "3 is positive"
 
-// Now, let's increase the value of `a`
-a.accept(4)                                   // prints: 6 is positive
-// The sum of the latest values, `4` and `2`, is now `6`.
-// Since this is `>= 0`, the `map` operator produces "6 is positive"
-// and that result is "assigned" to `c`.
-// Since the value of `c` changed, `{ print($0) }` will get called,
-// and "6 is positive" will be printed.
+// Теперь давайте увеличим значение `a`
+a.accept(4) // печатает: "6 is positive"
+// Сумма последних значений `4` и `2` теперь равна `6`.
+// Так как это `>= 0`, оператор `map` выдает "6 is positive"
+// и этот результат "присваивается" `c`.
+// Поскольку значение `c` изменилось, будет вызван `{ print($0) }`,
+// и будет напечатано "6 is positive".
 
-// Now, let's change the value of `b`
-b.accept(-8)                                 // doesn't print anything
-// The sum of the latest values, `4 + (-8)`, is `-4`.
-// Since this is not `>= 0`, `map` doesn't get executed.
-// This means that `c` still contains "6 is positive"
-// Since `c` hasn't been updated, a new "next" value hasn't been produced,
-// and `{ print($0) }` won't be called.
+// Теперь давайте изменим значение `b`
+b.accept(-8) // doesn't print anything
+// Сумма последних значений `4 + (-8)` равна `-4`.
+// Так как это не `>= 0`, `map` не выполняется.
+// Это означает, что `c` все еще содержит "6 is positive"
+// Так как `c` не был обновлен, новое "next" значение не было создано,
+// и `{ print($0) }` не будут вызываться.
 ```
 
 ## Simple UI bindings
 
-* Instead of binding to Relays, let's bind to `UITextField` values using the `rx.text` property.
-* Next, `map` the `String` into an `Int` and determine if the number is prime using an async API.
-* If the text is changed before the async call completes, a new async call will replace it via `concat`.
-* Bind the results to a `UILabel`.
+* Вместо привязки к Relay давайте привяжем значения `UITextField` с помощью свойства `rx.text`.
+* Затем `преобразуйте` `String` в `Int` и определите, является ли число простым, используя асинхронный API.
+* Если текст изменен до завершения асинхронного вызова, новый асинхронный вызов заменит его через `concat`.
+* Привязать результаты к `UILabel`.
 
 ```swift
-let subscription/*: Disposable */ = primeTextField.rx.text.orEmpty // type is Observable<String>
-            .map { WolframAlphaIsPrime(Int($0) ?? 0) }             // type is Observable<Observable<Prime>>
-            .concat()                                              // type is Observable<Prime>
-            .map { "number \($0.n) is prime? \($0.isPrime)" }      // type is Observable<String>
-            .bind(to: resultLabel.rx.text)                         // return Disposable that can be used to unbind everything
+let subscription/*: Disposable */ = primeTextField.rx.text.orEmpty // тип Observable<String>
+            .map { WolframAlphaIsPrime(Int($0) ?? 0) }             // тип Observable<Observable<Prime>>
+            .concat()                                              // тип Observable<Prime>
+            .map { "number \($0.n) is prime? \($0.isPrime)" }      // тип Observable<String>
+            .bind(to: resultLabel.rx.text)                         // возвращаем Disposable, который можно использовать для отмены привязки всего
 
-// This will set `resultLabel.text` to "number 43 is prime? true" after
-// server call completes. You manually trigger a control event since those are
-// the UIKit events RxCocoa observes internally.
+// Это установит для `resultLabel.text` значение "number 43 is prime? true" после
+// вызов сервера завершен. Вы вручную инициируете управляющее событие, поскольку они
+// события UIKit, которые RxCocoa наблюдает внутренне.
 primeTextField.text = "43"
 primeTextField.sendActions(for: .editingDidEnd)
 
 // ...
 
-// to unbind everything, just call
+// чтобы все развязать, просто вызываем 
 subscription.dispose()
 ```
 
-All of the operators used in this example are the same operators used in the first example with relays. There's nothing special about it.
+Все операторы, используемые в этом примере, являются теми же операторами, что и в первом примере с реле. В этом нет ничего особенного.
 
 ## Automatic input validation
 
-If you are new to Rx, the next example will probably be a little overwhelming at first. However, it's here to demonstrate how RxSwift code looks in the real-world.
+Если вы новичок в Rx, следующий пример, вероятно, поначалу покажется вам немного ошеломляющим. Однако здесь мы демонстрируем, как код RxSwift выглядит в реальном мире.
 
-This example contains complex async UI validation logic with progress notifications.
-All operations are canceled the moment `disposeBag` is deallocated.
+Этот пример содержит сложную логику проверки асинхронного пользовательского интерфейса с уведомлениями о ходе выполнения.
+Все операции отменяются в момент освобождения `disposeBag`.
 
-Let's give it a shot.
+Давайте попробуем.
 
 ```swift
 enum Availability {
@@ -126,8 +129,8 @@ enum Availability {
     }
 }
 
-// bind UI control values directly
-// use username from `usernameOutlet` as username values source
+// связываем значения элементов управления UI напрямую
+// используем имя пользователя из `usernameOutlet` в качестве источника значений имени пользователя
 self.usernameOutlet.rx.text
     .map { username -> Observable<Availability> in
 
@@ -179,6 +182,5 @@ self.usernameOutlet.rx.text
     .disposed(by: disposeBag)
 ```
 
-It doesn't get any simpler than that. There are [more examples](../RxExample) in the repository, so feel free to check them out.
-
-They include examples on how to use Rx in the context of MVVM pattern or without it.
+Это не становится проще, чем это. В репозитории есть [больше примеров](../RxExample), так что не стесняйтесь проверить их.
+Они включают примеры того, как использовать Rx в контексте шаблона MVVM или без него.
