@@ -21,7 +21,7 @@ var a = 1       // это только присвоит значение «1» �
 var b = 2       // это только присвоит значение «2» для `b` один раз this will only assign the value `2` to `b` once
 
 if a + b >= 0 {
-    c = "\(a + b) is positive" // this will only assign the value to `c` once
+    c = "\(a + b) is positive" // это присвоит значение `c` только один раз
 }
 ```
 
@@ -65,7 +65,7 @@ a.accept(4) // печатает: "6 is positive"
 // и будет напечатано "6 is positive".
 
 // Теперь давайте изменим значение `b`
-b.accept(-8) // doesn't print anything
+b.accept(-8) // ничего не печатает
 // Сумма последних значений `4 + (-8)` равна `-4`.
 // Так как это не `>= 0`, `map` не выполняется.
 // Это означает, что `c` все еще содержит "6 is positive"
@@ -134,22 +134,23 @@ enum Availability {
 self.usernameOutlet.rx.text
     .map { username -> Observable<Availability> in
 
-        // synchronous validation, nothing special here
+        // синхронная проверка, здесь ничего особенного
         guard let username = username, !username.isEmpty else {
-            // Convenience for constructing synchronous result.
-            // In case there is mixed synchronous and asynchronous code inside the same
-            // method, this will construct an async result that is resolved immediately.
+
+	    // Удобство построения синхронного результата.
+            // В случае, если внутри одного и того же кода смешанный синхронный и асинхронный
+            // этот метод создаст асинхронный результат, который обрабатывается немедленно.
             return Observable.just(.invalid(message: "Username can't be empty."))
         }
 
         // ...
 
-        // User interfaces should probably show some state while async operations
-        // are executing.
+        // Пользовательские интерфейсы, вероятно, должны отображать некоторое состояние во время асинхронных операций
+        // выполняются.
         let loadingValue = Availability.pending(message: "Checking availability ...")
 
-        // This will fire a server call to check if the username already exists.
-        // Its type is `Observable<Bool>`
+	// Это вызовет вызов сервера, чтобы проверить, существует ли уже имя пользователя.
+        // Его тип `Observable<Bool>`
         return API.usernameAvailable(username)
           .map { available in
               if available {
@@ -159,26 +160,29 @@ self.usernameOutlet.rx.text
                   return .taken(message: "Username already taken")
               }
           }
-          // use `loadingValue` until server responds
+          // используйте `loadingValue`, пока сервер не ответит
           .startWith(loadingValue)
     }
-// Since we now have `Observable<Observable<Availability>>`
-// we need to somehow return to a simple `Observable<Availability>`.
-// We could use the `concat` operator from the second example, but we really
-// want to cancel pending asynchronous operations if a new username is provided.
-// That's what `switchLatest` does.
+
+// Так как теперь у нас есть `Observable<Observable<Availability>>`
+// нам нужно как-то вернуться к простому `Observable<Availability>`.
+// Мы могли бы использовать оператор `concat` из второго примера, но на самом деле мы
+// хотим отменить ожидающие асинхронные операции, если указано новое имя пользователя.
+// Вот что делает `switchLatest`.
     .switchLatest()
-// Now we need to bind that to the user interface somehow.
-// Good old `subscribe(onNext:)` can do that.
-// That's the end of `Observable` chain.
+    
+// Теперь нам нужно как-то связать это с пользовательским интерфейсом.
+// Старый добрый `subscribe(onNext:)` может сделать это.
+// Это конец цепочки `Observable`.
     .subscribe(onNext: { [weak self] validity in
         self?.errorLabel.textColor = validationColor(validity)
         self?.errorLabel.text = validity.message
     })
-// This will produce a `Disposable` object that can unbind everything and cancel
-// pending async operations.
-// Instead of doing it manually, which is tedious,
-// let's dispose everything automagically upon view controller dealloc.
+    
+// Это создаст объект `Disposable`, который может отвязать все и отменить
+// ожидающие асинхронные операции.
+// Вместо того, чтобы делать это вручную, что утомительно,
+// давайте удалим все автоматически при освобождении контроллера представления.
     .disposed(by: disposeBag)
 ```
 
